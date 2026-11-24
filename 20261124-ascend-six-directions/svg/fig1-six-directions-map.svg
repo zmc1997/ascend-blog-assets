@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="552" viewBox="0 0 1280 552" role="img" aria-labelledby="title desc">
+  <title id="title">从 NPU 单步耗时公式推导六大优化方向</title>
+  <desc id="desc">将昇腾 NPU 单步执行耗时拆解为计算量、传输量、计算效率、访存效率、多单元重叠与固定控制开销六个物理抓手，标出相对传统四项补齐的三大缺口。</desc>
+  <g font-family="Microsoft YaHei, Noto Sans CJK SC, PingFang SC, sans-serif">
+    <rect x="0" y="0" width="1280" height="552" rx="14" fill="#edf3fa"/>
+    <text x="28" y="46" font-size="28" font-weight="700" fill="#203d5d">从 NPU 单步耗时分解推导六大优化方向</text>
+    <text x="28" y="74" font-size="16" fill="#526d88">传统四项只覆盖分子与部分重叠，补齐“计算效率、访存效率、控制固定税”三大缺口后才能完整解释生产优化</text>
+
+    <!-- Formula bar -->
+    <rect x="24" y="96" width="1232" height="92" rx="12" fill="#ffffff"/>
+    <rect x="44" y="114" width="106" height="56" rx="9" fill="#203d5d"/>
+    <text x="97" y="148" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">T_step ≈</text>
+
+    <rect x="166" y="114" width="246" height="56" rx="9" fill="#dceaff"/>
+    <text x="289" y="138" font-size="15" font-weight="700" fill="#1d4f8c" text-anchor="middle">W_compute / (η_comp × P_peak)</text>
+    <text x="289" y="159" font-size="12.5" fill="#526d88" text-anchor="middle">① 计算量（分子）｜ ③ 计算效率（分母）</text>
+
+    <text x="428" y="149" font-size="20" font-weight="700" fill="#526d88" text-anchor="middle">+</text>
+
+    <rect x="444" y="114" width="246" height="56" rx="9" fill="#d9f1e9"/>
+    <text x="567" y="138" font-size="15" font-weight="700" fill="#1d6b55" text-anchor="middle">V_data / (η_mem × B_peak)</text>
+    <text x="567" y="159" font-size="12.5" fill="#526d88" text-anchor="middle">② 传输量（分子）｜ ④ 访存效率（分母）</text>
+
+    <text x="706" y="149" font-size="20" font-weight="700" fill="#5b3b9e" text-anchor="middle">−</text>
+
+    <rect x="722" y="114" width="246" height="56" rx="9" fill="#e9e2fa"/>
+    <text x="845" y="138" font-size="15" font-weight="700" fill="#5b3b9e" text-anchor="middle">T_hidden（隐藏重叠时间）</text>
+    <text x="845" y="159" font-size="12.5" fill="#526d88" text-anchor="middle">⑤ 异构并行、流水重叠与负载均衡</text>
+
+    <text x="984" y="149" font-size="20" font-weight="700" fill="#8c5210" text-anchor="middle">+</text>
+
+    <rect x="1000" y="114" width="236" height="56" rx="9" fill="#fff0d4"/>
+    <text x="1118" y="138" font-size="15" font-weight="700" fill="#8c5210" text-anchor="middle">T_overhead（固定控制税）</text>
+    <text x="1118" y="159" font-size="12.5" fill="#526d88" text-anchor="middle">⑥ 发射、同步屏障与调度开销</text>
+
+    <!-- Row 1: Directions 1, 2, 3 -->
+    <rect x="24" y="208" width="398" height="150" rx="12" fill="#ffffff" stroke="#b9d2f2" stroke-width="1.5"/>
+    <rect x="42" y="224" width="156" height="28" rx="7" fill="#dceaff"/>
+    <text x="120" y="243" font-size="15" font-weight="700" fill="#1d4f8c" text-anchor="middle">① 减少计算量</text>
+    <rect x="318" y="226" width="86" height="24" rx="6" fill="#edf3f9"/>
+    <text x="361" y="242" font-size="12" fill="#526d88" text-anchor="middle">传统四项已含</text>
+    <text x="42" y="278" font-size="14" font-weight="700" fill="#203d5d">削分子：少算无效行、复用结果、去排序</text>
+    <text x="42" y="306" font-size="13" fill="#526d88">典型提交：18（MTP LMHead 按请求数 pad）</text>
+    <text x="42" y="330" font-size="13" fill="#526d88">　　　　　14（UB 位图复用，消回写反推重算）</text>
+
+    <rect x="441" y="208" width="398" height="150" rx="12" fill="#ffffff" stroke="#9fd6c3" stroke-width="1.5"/>
+    <rect x="459" y="224" width="174" height="28" rx="7" fill="#d9f1e9"/>
+    <text x="546" y="243" font-size="15" font-weight="700" fill="#1d6b55" text-anchor="middle">② 减少数据传输量</text>
+    <rect x="735" y="226" width="86" height="24" rx="6" fill="#edf3f9"/>
+    <text x="778" y="242" font-size="12" fill="#526d88" text-anchor="middle">传统四项已含</text>
+    <text x="459" y="278" font-size="14" font-weight="700" fill="#203d5d">削分子：消 HBM 中间落盘、隐式拷贝与 D2H</text>
+    <text x="459" y="306" font-size="13" fill="#526d88">典型提交：01（Direct 融合多核写双目标，省 sparse_copy）</text>
+    <text x="459" y="330" font-size="13" fill="#526d88">　　　　　11（Split-Q 省拼接/切片连续化）、10（去重）</text>
+
+    <rect x="858" y="208" width="398" height="150" rx="12" fill="#ffffff" stroke="#f0a6a6" stroke-width="2"/>
+    <rect x="876" y="224" width="188" height="28" rx="7" fill="#fde4e4"/>
+    <text x="970" y="243" font-size="15" font-weight="700" fill="#a32929" text-anchor="middle">③ 提高计算执行效率</text>
+    <rect x="1152" y="226" width="86" height="24" rx="6" fill="#fde4e4"/>
+    <text x="1195" y="242" font-size="12" font-weight="700" fill="#a32929" text-anchor="middle">补齐缺口 1</text>
+    <text x="876" y="278" font-size="14" font-weight="700" fill="#203d5d">提分母：算量不变，缩短指令链与适配 Cube</text>
+    <text x="876" y="306" font-size="13" fill="#526d88">典型提交：03/05（RNE 魔数去 INT32 往返）</text>
+    <text x="876" y="330" font-size="13" fill="#526d88">　　　　　04（Cube 分块直绑 ＋ HF32 控制）</text>
+
+    <!-- Row 2: Directions 4, 5, 6 -->
+    <rect x="24" y="378" width="398" height="150" rx="12" fill="#ffffff" stroke="#f0a6a6" stroke-width="2"/>
+    <rect x="42" y="394" width="204" height="28" rx="7" fill="#fde4e4"/>
+    <text x="144" y="413" font-size="15" font-weight="700" fill="#a32929" text-anchor="middle">④ 提高访存与传输效率</text>
+    <rect x="318" y="396" width="86" height="24" rx="6" fill="#fde4e4"/>
+    <text x="361" y="412" font-size="12" font-weight="700" fill="#a32929" text-anchor="middle">补齐缺口 2</text>
+    <text x="42" y="448" font-size="14" font-weight="700" fill="#203d5d">提分母：字节不变，提带宽利用率与避硬件冲突</text>
+    <text x="42" y="476" font-size="13" fill="#a32929">官方案例：z = x + y 扩 UB 错开 bank 冲突</text>
+    <text x="42" y="500" font-size="13" fill="#526d88">隐形底座：01/03/06/15a 对齐、合并读与迁 HBM</text>
+
+    <rect x="441" y="378" width="398" height="150" rx="12" fill="#ffffff" stroke="#c3b1ed" stroke-width="1.5"/>
+    <rect x="459" y="394" width="212" height="28" rx="7" fill="#e9e2fa"/>
+    <text x="565" y="413" font-size="15" font-weight="700" fill="#5b3b9e" text-anchor="middle">⑤ 改善并行、流水与均衡</text>
+    <rect x="735" y="396" width="86" height="24" rx="6" fill="#edf3f9"/>
+    <text x="778" y="412" font-size="12" fill="#526d88" text-anchor="middle">扩充传统两项</text>
+    <text x="459" y="448" font-size="14" font-weight="700" fill="#203d5d">藏时间＋齐负载：核内流水/跨流重叠与多核均衡</text>
+    <text x="459" y="476" font-size="13" fill="#526d88">典型提交：07（跨流 CV 错峰）、08（权重预取）</text>
+    <text x="459" y="500" font-size="13" fill="#526d88">核内基础：Double Buffer、03 收核池、09 异步重叠</text>
+
+    <rect x="858" y="378" width="398" height="150" rx="12" fill="#ffffff" stroke="#f0a6a6" stroke-width="2"/>
+    <rect x="876" y="394" width="224" height="28" rx="7" fill="#fff0d4"/>
+    <text x="988" y="413" font-size="15" font-weight="700" fill="#8c5210" text-anchor="middle">⑥ 降低同步、启动与调度开销</text>
+    <rect x="1152" y="396" width="86" height="24" rx="6" fill="#fde4e4"/>
+    <text x="1195" y="412" font-size="12" font-weight="700" fill="#a32929" text-anchor="middle">补齐缺口 3</text>
+    <text x="876" y="448" font-size="14" font-weight="700" fill="#203d5d">降固定税：去回调、合小核、替小包通信、省屏障</text>
+    <text x="876" y="476" font-size="13" fill="#8c5210">★ 本批 1M Decode 最集中切入点（4 笔提交 / 5 项机制）</text>
+    <text x="876" y="500" font-size="13" fill="#526d88">典型提交：15a/15b、16（Notify）、09、06</text>
+  </g>
+</svg>

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="464" viewBox="0 0 1280 464" role="img" aria-labelledby="title desc">
+  <title id="title">为什么局部算子提速不等于端到端 ITL 下降：四道真实落差</title>
+  <desc id="desc">总结 19 笔真实提交与实测回归中暴露的四类工程落差：形状与容量拐点、编译器绕行耦合、关键路径遮蔽与实测反转、正确性与静态图生命周期约束。</desc>
+  <g font-family="Microsoft YaHei, Noto Sans CJK SC, PingFang SC, sans-serif">
+    <rect x="0" y="0" width="1280" height="464" rx="14" fill="#edf3fa"/>
+    <text x="28" y="46" font-size="28" font-weight="700" fill="#203d5d">为什么“单算子快了”不一定换来“端到端更快”？</text>
+    <text x="28" y="74" font-size="16" fill="#526d88">19 笔真实提交与真机实测反复验证了四类工程落差：每一类都足以把局部微秒级收益抵消甚至反转</text>
+
+    <!-- Card 1 -->
+    <rect x="24" y="100" width="292" height="338" rx="14" fill="#ffffff" stroke="#e5b869" stroke-width="1.8"/>
+    <rect x="44" y="120" width="252" height="36" rx="8" fill="#fff0d4"/>
+    <text x="170" y="144" font-size="15.5" font-weight="700" fill="#8c5210" text-anchor="middle">落差 1 · 形状与容量拐点</text>
+
+    <text x="44" y="184" font-size="14" font-weight="700" fill="#203d5d">换个尺寸或分布就触发悬崖</text>
+    <text x="44" y="216" font-size="13" fill="#526d88">• 提交 03：6 行快至 2.37 μs，</text>
+    <text x="44" y="236" font-size="13" fill="#526d88">　扩到 512 行反而慢于 CANN</text>
+    <text x="44" y="268" font-size="13" fill="#526d88">• 提交 06：聚集槽易单核串行，</text>
+    <text x="44" y="288" font-size="13" fill="#526d88">　改轮转分核又在分散槽变慢</text>
+    <text x="44" y="320" font-size="13" fill="#526d88">• 提交 15a：片上 UB 一旦顶满，</text>
+    <text x="44" y="340" font-size="13" fill="#526d88">　规划核阶梯退化回 GM 扫描</text>
+
+    <rect x="44" y="374" width="252" height="44" rx="8" fill="#edf3f9"/>
+    <text x="170" y="401" font-size="13" font-weight="700" fill="#203d5d" text-anchor="middle">对策：标明安全区间与退化边界</text>
+
+    <!-- Card 2 -->
+    <rect x="338" y="100" width="292" height="338" rx="14" fill="#ffffff" stroke="#93b9ea" stroke-width="1.8"/>
+    <rect x="358" y="120" width="252" height="36" rx="8" fill="#dceaff"/>
+    <text x="484" y="144" font-size="15.5" font-weight="700" fill="#1d4f8c" text-anchor="middle">落差 2 · 编译器绕行耦合</text>
+
+    <text x="358" y="184" font-size="14" font-weight="700" fill="#203d5d">省的是工具链毛病，非永恒规律</text>
+    <text x="358" y="216" font-size="13" fill="#526d88">• 提交 03：FP16 载体避 INT8 双</text>
+    <text x="358" y="236" font-size="13" fill="#526d88">　重铸，直接造 mask 避 RMW</text>
+    <text x="358" y="268" font-size="13" fill="#526d88">• 提交 04：通用 HF32 控错寄存</text>
+    <text x="358" y="288" font-size="13" fill="#526d88">　器位，被迫外链 19 行 .bc</text>
+    <text x="358" y="320" font-size="13" fill="#526d88">• 提交 07/08：多流与预取必须写</text>
+    <text x="358" y="340" font-size="13" fill="#526d88">　进缓存键或包成 custom op</text>
+
+    <rect x="358" y="374" width="252" height="44" rx="8" fill="#edf3f9"/>
+    <text x="484" y="401" font-size="13" font-weight="700" fill="#203d5d" text-anchor="middle">对策：升级 CANN 后定期复测</text>
+
+    <!-- Card 3 -->
+    <rect x="652" y="100" width="292" height="338" rx="14" fill="#ffffff" stroke="#f0a6a6" stroke-width="1.8"/>
+    <rect x="672" y="120" width="252" height="36" rx="8" fill="#fde4e4"/>
+    <text x="798" y="144" font-size="15.5" font-weight="700" fill="#a32929" text-anchor="middle">落差 3 · 关键路径与实测反转</text>
+
+    <text x="672" y="184" font-size="14" font-weight="700" fill="#203d5d">局部收益常被遮蔽或与整网相反</text>
+    <text x="672" y="216" font-size="13" fill="#526d88">• 替代：开 15/16 切 NPU 规划后，</text>
+    <text x="672" y="236" font-size="13" fill="#526d88">　10 的 CPU 去重整条不执行</text>
+    <text x="672" y="268" font-size="13" fill="#526d88">• 遮蔽：Native 下 Q 量化可被 K 掩</text>
+    <text x="672" y="288" font-size="13" fill="#526d88">　盖；MLAPO 移主流，暴露视时序</text>
+    <text x="672" y="320" font-size="13" fill="#a32929">• 预取反证：127/128 采样图间隔</text>
+    <text x="672" y="340" font-size="13" fill="#a32929">　降，但 125/126 ITL 反升 0.4ms</text>
+
+    <rect x="672" y="374" width="252" height="44" rx="8" fill="#edf3f9"/>
+    <text x="798" y="401" font-size="13" font-weight="700" fill="#203d5d" text-anchor="middle">对策：关采集跑整网组合消融</text>
+
+    <!-- Card 4 -->
+    <rect x="966" y="100" width="290" height="338" rx="14" fill="#ffffff" stroke="#c3b1ed" stroke-width="1.8"/>
+    <rect x="986" y="120" width="250" height="36" rx="8" fill="#e9e2fa"/>
+    <text x="1111" y="144" font-size="15.5" font-weight="700" fill="#5b3b9e" text-anchor="middle">落差 4 · 正确性与静态图税</text>
+
+    <text x="986" y="184" font-size="14" font-weight="700" fill="#203d5d">修并发与生命周期坑需守底线</text>
+    <text x="986" y="216" font-size="13" fill="#526d88">• 显存/重算：02 拆混合槽略增显</text>
+    <text x="986" y="236" font-size="13" fill="#526d88">　存；12 限复用上限触发重算</text>
+    <text x="986" y="268" font-size="13" fill="#526d88">• 补同步：17 修非 owner 多 token</text>
+    <text x="986" y="288" font-size="13" fill="#526d88">　读脏值与 PIECEWISE 捕获态</text>
+    <text x="986" y="320" font-size="13" fill="#526d88">• 故障边界：16 设 60s 设备超时，</text>
+    <text x="986" y="340" font-size="13" fill="#526d88">　但上报与同进程重建仍有缺口</text>
+
+    <rect x="986" y="374" width="250" height="44" rx="8" fill="#edf3f9"/>
+    <text x="1111" y="401" font-size="13" font-weight="700" fill="#203d5d" text-anchor="middle">对策：护栏前置，故障注入实测</text>
+  </g>
+</svg>

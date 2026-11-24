@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="572" viewBox="0 0 1280 572" role="img" aria-labelledby="title desc">
+  <title id="title">方向六与跨方向权衡：FSA KV 计划从 CPU 到共享 DDR + Notify 的真实物理账</title>
+  <desc id="desc">展示提交 15 与 16 的三阶段演进，附 TEST-441~443 实测净收益，同时写明完整载荷 (P+1)×S 仅为简化估算而非总线实测字节，且 ACK 仅具备与 Attention 重叠的条件。</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#6887a7"/></marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1d6b55"/></marker>
+  </defs>
+  <g font-family="Microsoft YaHei, Noto Sans CJK SC, PingFang SC, sans-serif">
+    <rect x="0" y="0" width="1280" height="572" rx="14" fill="#edf3fa"/>
+    <text x="28" y="46" font-size="28" font-weight="700" fill="#203d5d">跨方向权衡实例：为什么“绕道更慢的共享 DDR”也能测出净收益？</text>
+    <text x="28" y="74" font-size="16" fill="#526d88">提交 15 拔掉 Host 回调，提交 16 在 1M c1（TEST-441~443）实测 ITL 62.5/62.8 vs HCCL 63.7 ms，但仍需算清跨方向代价账</text>
+
+    <!-- Upper card: 3-stage evolution -->
+    <rect x="24" y="96" width="1232" height="306" rx="14" fill="#ffffff"/>
+
+    <!-- Row 1: cpu -->
+    <rect x="44" y="118" width="150" height="62" rx="9" fill="#edf3f9"/>
+    <text x="119" y="146" font-size="15" font-weight="700" fill="#203d5d" text-anchor="middle">原基线（cpu）</text>
+    <text x="119" y="166" font-size="12" fill="#526d88" text-anchor="middle">CPU 规划 + HCCL</text>
+
+    <rect x="212" y="118" width="240" height="62" rx="9" fill="#fde4e4"/>
+    <text x="332" y="144" font-size="14" font-weight="700" fill="#a32929" text-anchor="middle">D2H + LaunchHostFunc</text>
+    <text x="332" y="164" font-size="12" fill="#526d88" text-anchor="middle">按行数选线程（至多 8）算 LRU</text>
+    <line x1="456" y1="149" x2="476" y2="149" stroke="#6887a7" stroke-width="2" marker-end="url(#arr)"/>
+
+    <rect x="482" y="118" width="160" height="62" rx="9" fill="#fde4e4"/>
+    <text x="562" y="144" font-size="14" font-weight="700" fill="#a32929" text-anchor="middle">计划 H2D 回卡</text>
+    <text x="562" y="164" font-size="12" fill="#526d88" text-anchor="middle">跨 PCIe 往返</text>
+    <line x1="646" y1="149" x2="666" y2="149" stroke="#6887a7" stroke-width="2" marker-end="url(#arr)"/>
+
+    <rect x="672" y="118" width="236" height="62" rx="9" fill="#fff0d4"/>
+    <text x="790" y="144" font-size="14" font-weight="700" fill="#8c5210" text-anchor="middle">HCCL Broadcast 广播</text>
+    <text x="790" y="164" font-size="12" fill="#526d88" text-anchor="middle">为 ~25 KB 索引拉起集合通信</text>
+    <line x1="912" y1="149" x2="932" y2="149" stroke="#6887a7" stroke-width="2" marker-end="url(#arr)"/>
+
+    <rect x="938" y="118" width="294" height="62" rx="9" fill="#edf3f9"/>
+    <text x="1085" y="144" font-size="14" font-weight="700" fill="#203d5d" text-anchor="middle">各卡等待广播完成 → 执行 FSA</text>
+    <text x="1085" y="164" font-size="12" fill="#a32929" text-anchor="middle">瓶颈：Host 调度抖动 + 小包通信固定税</text>
+
+    <!-- Row 2: 15a hccl -->
+    <rect x="44" y="210" width="150" height="62" rx="9" fill="#dceaff"/>
+    <text x="119" y="238" font-size="15" font-weight="700" fill="#1d4f8c" text-anchor="middle">提交 15（hccl）</text>
+    <text x="119" y="258" font-size="12" fill="#1d4f8c" text-anchor="middle">规划下沉 NPU</text>
+
+    <rect x="212" y="210" width="430" height="62" rx="9" fill="#e9e2fa"/>
+    <text x="427" y="236" font-size="14.5" font-weight="700" fill="#5b3b9e" text-anchor="middle">A3 Vector 规划核（TP0 显存常驻 LRU 状态）</text>
+    <text x="427" y="256" font-size="12" fill="#526d88" text-anchor="middle">砍掉 Host 回调与 D2H/H2D（另附 15b Triton 10 合 1）</text>
+    <line x1="646" y1="241" x2="666" y2="241" stroke="#6887a7" stroke-width="2" marker-end="url(#arr)"/>
+
+    <rect x="672" y="210" width="236" height="62" rx="9" fill="#fff0d4"/>
+    <text x="790" y="236" font-size="14" font-weight="700" fill="#8c5210" text-anchor="middle">仍走 HCCL 广播</text>
+    <text x="790" y="256" font-size="12" fill="#526d88" text-anchor="middle">完整载荷简化估算 (P − 1)×S</text>
+    <line x1="912" y1="241" x2="932" y2="241" stroke="#6887a7" stroke-width="2" marker-end="url(#arr)"/>
+
+    <rect x="938" y="210" width="294" height="62" rx="9" fill="#dceaff"/>
+    <text x="1085" y="236" font-size="14" font-weight="700" fill="#1d4f8c" text-anchor="middle">各卡本地 Publish → 执行 FSA</text>
+    <text x="1085" y="256" font-size="12" fill="#526d88" text-anchor="middle">TEST-442 实测 ITL 63.7 ms</text>
+
+    <!-- Row 3: 16 notify -->
+    <rect x="44" y="302" width="150" height="62" rx="9" fill="#d9f1e9"/>
+    <text x="119" y="330" font-size="15" font-weight="700" fill="#1d6b55" text-anchor="middle">提交 16（notify）</text>
+    <text x="119" y="350" font-size="12" fill="#1d6b55" text-anchor="middle">共享 DDR + Notify</text>
+
+    <rect x="212" y="302" width="248" height="62" rx="9" fill="#e9e2fa"/>
+    <text x="336" y="328" font-size="14" font-weight="700" fill="#5b3b9e" text-anchor="middle">TP0 写共享 DDR 载荷</text>
+    <text x="336" y="348" font-size="12" fill="#526d88" text-anchor="middle">6 行整载荷 ~25 KB，32B 对齐</text>
+    <line x1="464" y1="333" x2="484" y2="333" stroke="#1d6b55" stroke-width="2.2" marker-end="url(#arr-green)"/>
+
+    <rect x="490" y="302" width="208" height="62" rx="9" fill="#d9f1e9"/>
+    <text x="594" y="328" font-size="14" font-weight="700" fill="#1d6b55" text-anchor="middle">STARS Notify READY</text>
+    <text x="594" y="348" font-size="12" fill="#1d6b55" text-anchor="middle">硬件轻量唤醒对端，免 HCCL</text>
+    <line x1="702" y1="333" x2="722" y2="333" stroke="#1d6b55" stroke-width="2.2" marker-end="url(#arr-green)"/>
+
+    <rect x="728" y="302" width="246" height="62" rx="9" fill="#fff0d4" stroke="#e5b869" stroke-width="1.5"/>
+    <text x="851" y="328" font-size="14" font-weight="700" fill="#8c5210" text-anchor="middle">全部 P 张卡读共享 DDR</text>
+    <text x="851" y="348" font-size="12" fill="#a32929" text-anchor="middle">含 TP0 自身按步长取所需槽位</text>
+    <line x1="978" y1="333" x2="998" y2="333" stroke="#1d6b55" stroke-width="2.2" marker-end="url(#arr-green)"/>
+
+    <rect x="1004" y="302" width="228" height="62" rx="9" fill="#d9f1e9"/>
+    <text x="1118" y="328" font-size="14" font-weight="700" fill="#1d6b55" text-anchor="middle">等本卡事件 → 跑 FSA</text>
+    <text x="1118" y="348" font-size="12" fill="#1d6b55" text-anchor="middle">ACK 可与 FSA 重叠（非必全藏）</text>
+
+    <!-- Bottom balance sheet: Gains vs Costs -->
+    <rect x="24" y="420" width="604" height="130" rx="12" fill="#ffffff" stroke="#9fd6c3" stroke-width="1.8"/>
+    <rect x="44" y="438" width="318" height="28" rx="7" fill="#d9f1e9"/>
+    <text x="203" y="457" font-size="14" font-weight="700" fill="#1d6b55" text-anchor="middle">正向收益与实测（方向 ⑥ ＋ 方向 ⑤）</text>
+    <text x="44" y="492" font-size="13.5" fill="#203d5d">• TEST-441~443（1M c1）实测净收益：Notify 62.5 / 62.8 vs HCCL 63.7 ms</text>
+    <text x="44" y="518" font-size="13.5" fill="#203d5d">• 替换生成计划载荷广播（部分复用层仍广播状态）；ACK 可与 FSA 重叠</text>
+
+    <rect x="652" y="420" width="604" height="130" rx="12" fill="#ffffff" stroke="#f0a6a6" stroke-width="1.8"/>
+    <rect x="672" y="438" width="322" height="28" rx="7" fill="#fde4e4"/>
+    <text x="833" y="457" font-size="14" font-weight="700" fill="#a32929" text-anchor="middle">代价账与归因边界（负方向 ② / ④）</text>
+    <text x="672" y="492" font-size="13.5" fill="#203d5d">• 按整载荷简化估算，共享 DDR 为 (P+1)×S ＞ HCCL 的 (P−1)×S（非总线实测）</text>
+    <text x="672" y="518" font-size="13.5" fill="#203d5d">• 三轮整网未拆出 HCCL 调度、DDR 与 ACK 占比，大包交叉点尚未测出</text>
+  </g>
+</svg>

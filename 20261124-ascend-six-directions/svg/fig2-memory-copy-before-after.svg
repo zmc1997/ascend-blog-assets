@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="532" viewBox="0 0 1280 532" role="img" aria-labelledby="title desc">
+  <title id="title">方向二实战：如何消灭隐蔽的数据搬运与中间拷贝（提交 01 与 11）</title>
+  <desc id="desc">对比提交 01 用 Direct 多核融合 kernel 省去外部 sparse_copy，以及提交 11 用 Split-Q 直传省去 512+64 拼接及两块切片的潜在连续化拷贝。</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#6887a7"/></marker>
+    <marker id="arr-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#a32929"/></marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1d6b55"/></marker>
+  </defs>
+  <g font-family="Microsoft YaHei, Noto Sans CJK SC, PingFang SC, sans-serif">
+    <rect x="0" y="0" width="1280" height="532" rx="14" fill="#edf3fa"/>
+    <text x="28" y="46" font-size="28" font-weight="700" fill="#203d5d">方向二实战：一“融”一“拆”，精准砍掉中间落盘与隐藏拷贝</text>
+    <text x="28" y="74" font-size="16" fill="#526d88">提交 01 靠融合 kernel 省去外部 sparse_copy；提交 11 反其道行之，拆开接口省去拼接与两块切片的隐式连续化</text>
+
+    <!-- Case 1: Commit 01 -->
+    <rect x="24" y="96" width="1232" height="196" rx="14" fill="#ffffff"/>
+    <text x="44" y="128" font-size="17" font-weight="700" fill="#203d5d">案例 A · 提交 01（Direct MLAPO 融合写双目标）：消除十余碎算子 HBM 往返与外部 sparse_copy</text>
+
+    <!-- 01 Before -->
+    <rect x="44" y="144" width="124" height="56" rx="8" fill="#fde4e4"/>
+    <text x="106" y="177" font-size="15" font-weight="700" fill="#a32929" text-anchor="middle">改前（Native）</text>
+    <rect x="184" y="144" width="234" height="56" rx="9" fill="#fde4e4"/>
+    <text x="301" y="168" font-size="14" font-weight="700" fill="#a32929" text-anchor="middle">十余 Native 碎算子</text>
+    <text x="301" y="188" font-size="12" fill="#526d88" text-anchor="middle">多次读写 HBM 中间张量</text>
+    <line x1="422" y1="172" x2="444" y2="172" stroke="#a32929" stroke-width="2" marker-end="url(#arr-red)"/>
+    <rect x="450" y="144" width="218" height="56" rx="9" fill="#fff0d4"/>
+    <text x="559" y="168" font-size="14" font-weight="700" fill="#8c5210" text-anchor="middle">写 NPU GM 稠密 KV</text>
+    <text x="559" y="188" font-size="12" fill="#526d88" text-anchor="middle">current_k / current_rope 落盘</text>
+    <line x1="672" y1="172" x2="694" y2="172" stroke="#a32929" stroke-width="2" marker-end="url(#arr-red)"/>
+    <rect x="700" y="144" width="276" height="56" rx="9" fill="#fde4e4"/>
+    <text x="838" y="168" font-size="14" font-weight="700" fill="#a32929" text-anchor="middle">TP0 独立流 sparse_copy</text>
+    <text x="838" y="188" font-size="12" fill="#a32929" text-anchor="middle">再读 NPU GM 写往映射 CPU 池</text>
+    <line x1="980" y1="172" x2="1002" y2="172" stroke="#6887a7" stroke-width="2" marker-end="url(#arr)"/>
+    <rect x="1008" y="144" width="224" height="56" rx="9" fill="#edf3f9"/>
+    <text x="1120" y="168" font-size="14" font-weight="700" fill="#203d5d" text-anchor="middle">NPU 缓冲 + CPU 池</text>
+    <text x="1120" y="188" font-size="12" fill="#526d88" text-anchor="middle">多走一遍 NPU GM 往返</text>
+
+    <!-- 01 After -->
+    <rect x="44" y="218" width="124" height="56" rx="8" fill="#d9f1e9"/>
+    <text x="106" y="251" font-size="15" font-weight="700" fill="#1d6b55" text-anchor="middle">改后（Direct）</text>
+    <rect x="184" y="218" width="484" height="56" rx="9" fill="#dceaff"/>
+    <text x="426" y="242" font-size="14.5" font-weight="700" fill="#1d4f8c" text-anchor="middle">Direct MLAPO 一次融合 kernel 调用（多核执行）</text>
+    <text x="426" y="262" font-size="12.5" fill="#526d88" text-anchor="middle">QKV 投影 + Norm + RoPE 融合，中间激活尽量留驻 UB / L1</text>
+    <line x1="672" y1="246" x2="694" y2="246" stroke="#1d6b55" stroke-width="2.2" marker-end="url(#arr-green)"/>
+    <rect x="700" y="218" width="532" height="56" rx="9" fill="#d9f1e9"/>
+    <text x="966" y="242" font-size="14.5" font-weight="700" fill="#1d6b55" text-anchor="middle">TP0 从最终 KV 缓冲分别写设备输出 ＋ 按业务槽位写 CPU 池</text>
+    <text x="966" y="262" font-size="12.5" fill="#1d6b55" text-anchor="middle">省去外部 sparse_copy（消费者遵守完成依赖；限 tokens ≤ 1024 静态 W8A8）</text>
+
+    <!-- Case 2: Commit 11 -->
+    <rect x="24" y="312" width="1232" height="196" rx="14" fill="#ffffff"/>
+    <text x="44" y="344" font-size="17" font-weight="700" fill="#203d5d">案例 B · 提交 11（Split-Q 接口去融合）：省 1 次 512+64 拼接，并可省两块切片的隐式连续化</text>
+
+    <!-- 11 Before -->
+    <rect x="44" y="360" width="124" height="56" rx="8" fill="#fde4e4"/>
+    <text x="106" y="393" font-size="15" font-weight="700" fill="#a32929" text-anchor="middle">改前（先拼后切）</text>
+    <rect x="184" y="360" width="224" height="56" rx="9" fill="#fde4e4"/>
+    <text x="296" y="384" font-size="14" font-weight="700" fill="#a32929" text-anchor="middle">显式拼接：Python torch.cat</text>
+    <text x="296" y="404" font-size="12" fill="#526d88" text-anchor="middle">512 NoPE + 64 RoPE → 576 维</text>
+    <line x1="412" y1="388" x2="434" y2="388" stroke="#a32929" stroke-width="2" marker-end="url(#arr-red)"/>
+    <rect x="440" y="360" width="212" height="56" rx="9" fill="#fff0d4"/>
+    <text x="546" y="384" font-size="14" font-weight="700" fill="#8c5210" text-anchor="middle">C++ 适配器 .slice()</text>
+    <text x="546" y="404" font-size="12" fill="#526d88" text-anchor="middle">切出 512 / 64 两非连续视图</text>
+    <line x1="656" y1="388" x2="678" y2="388" stroke="#a32929" stroke-width="2" marker-end="url(#arr-red)"/>
+    <rect x="684" y="360" width="326" height="56" rx="9" fill="#fde4e4" stroke="#e58c8c" stroke-width="1.5" stroke-dasharray="5 3"/>
+    <text x="847" y="384" font-size="14" font-weight="700" fill="#a32929" text-anchor="middle">潜在隐式连续化（.AutoContiguous()）</text>
+    <text x="847" y="404" font-size="12" fill="#a32929" text-anchor="middle">多行视图若需物化，分别复制 512 维与 64 维各一份</text>
+    <line x1="1014" y1="388" x2="1036" y2="388" stroke="#6887a7" stroke-width="2" marker-end="url(#arr)"/>
+    <rect x="1042" y="360" width="190" height="56" rx="9" fill="#edf3f9"/>
+    <text x="1137" y="384" font-size="14" font-weight="700" fill="#203d5d" text-anchor="middle">入核执行 FSA</text>
+    <text x="1137" y="404" font-size="12" fill="#526d88" text-anchor="middle">核内只读紧密步幅</text>
+
+    <!-- 11 After -->
+    <rect x="44" y="434" width="124" height="56" rx="8" fill="#d9f1e9"/>
+    <text x="106" y="467" font-size="15" font-weight="700" fill="#1d6b55" text-anchor="middle">改后（Split-Q）</text>
+    <rect x="184" y="434" width="320" height="56" rx="9" fill="#dceaff"/>
+    <text x="344" y="458" font-size="14.5" font-weight="700" fill="#1d4f8c" text-anchor="middle">保持 ql_nope(512) 与 q_pe(64) 分离</text>
+    <text x="344" y="478" font-size="12.5" fill="#526d88" text-anchor="middle">满足连续性、形状与类型条件时直接双参透传</text>
+    <line x1="508" y1="462" x2="536" y2="462" stroke="#1d6b55" stroke-width="2.2" marker-end="url(#arr-green)"/>
+    <rect x="542" y="434" width="468" height="56" rx="9" fill="#d9f1e9"/>
+    <text x="776" y="458" font-size="14.5" font-weight="700" fill="#1d6b55" text-anchor="middle">免除拼接与切片连续化（纯冗余消除，逐比特等价）</text>
+    <text x="776" y="478" font-size="12.5" fill="#1d6b55" text-anchor="middle">实际减少的设备任务数与拷贝量以对应 shape 的捕获图实测为准</text>
+    <line x1="1014" y1="462" x2="1036" y2="462" stroke="#1d6b55" stroke-width="2.2" marker-end="url(#arr-green)"/>
+    <rect x="1042" y="434" width="190" height="56" rx="9" fill="#d9f1e9"/>
+    <text x="1137" y="458" font-size="14" font-weight="700" fill="#1d6b55" text-anchor="middle">直接入核 FSA</text>
+    <text x="1137" y="478" font-size="12" fill="#1d6b55" text-anchor="middle">避免先拼后切</text>
+  </g>
+</svg>

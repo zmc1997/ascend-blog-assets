@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="540" viewBox="0 0 1280 540" role="img" aria-labelledby="title desc">
+  <title id="title">方向四图解：有效字节零变化，如何靠错开 UB Bank 冲突与合并 DMA 提速</title>
+  <desc id="desc">上半区对比片上 UB 同 bank 地址冲突排队与扩 Buffer 错位并行；下半区对比短步长碎片 DMA 与 32B 对齐 span 整块搬入 UB 再 Gather 的访存效率差异。</desc>
+  <defs>
+    <marker id="arr-r" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#a32929"/></marker>
+    <marker id="arr-g" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1d6b55"/></marker>
+    <marker id="arr-b" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1d4f8c"/></marker>
+  </defs>
+  <g font-family="Microsoft YaHei, Noto Sans CJK SC, PingFang SC, sans-serif">
+    <rect x="0" y="0" width="1280" height="540" rx="14" fill="#edf3fa"/>
+    <text x="28" y="46" font-size="28" font-weight="700" fill="#203d5d">方向四图解：有效字节 1 个没减，为什么“怎么搬”能快几倍？</text>
+    <text x="28" y="74" font-size="16" fill="#526d88">片上避开 UB Bank 排队冲突，片外将分散跨步取值改为连续加载物理跨度＋片上 Gather，提升有效带宽利用率 η_mem</text>
+
+    <!-- UPPER CARD: UB Bank Conflict -->
+    <rect x="24" y="96" width="1232" height="202" rx="14" fill="#ffffff"/>
+    <text x="44" y="126" font-size="16.5" font-weight="700" fill="#203d5d">一、片上访存（UB Bank 冲突）：以昇腾官方 z = x + y（4,096 float）为例</text>
+
+    <!-- Left: Conflict -->
+    <rect x="44" y="142" width="560" height="138" rx="10" fill="#fff5f5" stroke="#f0a6a6" stroke-width="1.5"/>
+    <rect x="60" y="154" width="170" height="26" rx="6" fill="#fde4e4"/>
+    <text x="145" y="172" font-size="13.5" font-weight="700" fill="#a32929" text-anchor="middle">改前：同 Bank 撞车</text>
+    <text x="242" y="172" font-size="12.5" fill="#526d88">x / y / z 地址按 Bank 周期对齐，同时抢占 Bank 0</text>
+
+    <!-- 3 source operands -->
+    <rect x="64" y="192" width="64" height="26" rx="5" fill="#dceaff"/>
+    <text x="96" y="210" font-size="13" font-weight="700" fill="#1d4f8c" text-anchor="middle">读 x</text>
+    <rect x="64" y="222" width="64" height="26" rx="5" fill="#dceaff"/>
+    <text x="96" y="240" font-size="13" font-weight="700" fill="#1d4f8c" text-anchor="middle">读 y</text>
+    <rect x="64" y="252" width="64" height="22" rx="5" fill="#fff0d4"/>
+    <text x="96" y="268" font-size="12.5" font-weight="700" fill="#8c5210" text-anchor="middle">写 z</text>
+
+    <!-- Converging red arrows into Bank 0 -->
+    <line x1="132" y1="205" x2="210" y2="216" stroke="#a32929" stroke-width="2" marker-end="url(#arr-r)"/>
+    <line x1="132" y1="235" x2="210" y2="226" stroke="#a32929" stroke-width="2" marker-end="url(#arr-r)"/>
+    <line x1="132" y1="263" x2="210" y2="236" stroke="#a32929" stroke-width="2" marker-end="url(#arr-r)"/>
+
+    <!-- 4 Banks -->
+    <rect x="218" y="192" width="84" height="78" rx="7" fill="#fde4e4" stroke="#a32929" stroke-width="1.8"/>
+    <text x="260" y="216" font-size="13.5" font-weight="700" fill="#a32929" text-anchor="middle">Bank 0</text>
+    <text x="260" y="237" font-size="12" font-weight="700" fill="#a32929" text-anchor="middle">x / y / z</text>
+    <text x="260" y="256" font-size="11.5" fill="#a32929" text-anchor="middle">串行排队！</text>
+
+    <rect x="314" y="192" width="82" height="78" rx="7" fill="#f3f6fa" stroke="#cbd9e8"/>
+    <text x="355" y="224" font-size="13" fill="#8299b0" text-anchor="middle">Bank 1</text>
+    <text x="355" y="246" font-size="11.5" fill="#8299b0" text-anchor="middle">空闲</text>
+
+    <rect x="408" y="192" width="82" height="78" rx="7" fill="#f3f6fa" stroke="#cbd9e8"/>
+    <text x="449" y="224" font-size="13" fill="#8299b0" text-anchor="middle">Bank 2</text>
+    <text x="449" y="246" font-size="11.5" fill="#8299b0" text-anchor="middle">空闲</text>
+
+    <rect x="502" y="192" width="84" height="78" rx="7" fill="#f3f6fa" stroke="#cbd9e8"/>
+    <text x="544" y="224" font-size="13" fill="#8299b0" text-anchor="middle">Bank 3</text>
+    <text x="544" y="246" font-size="11.5" fill="#8299b0" text-anchor="middle">空闲</text>
+
+    <!-- Center arrow -->
+    <line x1="612" y1="211" x2="660" y2="211" stroke="#1d6b55" stroke-width="2.6" marker-end="url(#arr-g)"/>
+    <text x="638" y="198" font-size="12" font-weight="700" fill="#1d6b55" text-anchor="middle">扩偏移</text>
+
+    <!-- Right: Staggered Banks -->
+    <rect x="672" y="142" width="564" height="138" rx="10" fill="#f2fbf7" stroke="#9fd6c3" stroke-width="1.5"/>
+    <rect x="688" y="154" width="188" height="26" rx="6" fill="#d9f1e9"/>
+    <text x="782" y="172" font-size="13.5" font-weight="700" fill="#1d6b55" text-anchor="middle">改后：错开 UB 地址偏移</text>
+    <text x="888" y="172" font-size="12.5" fill="#1d6b55">x / y / z 落入不同 Bank，同拍并行无排队</text>
+
+    <rect x="692" y="192" width="122" height="78" rx="7" fill="#dceaff" stroke="#8fb8ec" stroke-width="1.5"/>
+    <text x="753" y="218" font-size="13.5" font-weight="700" fill="#1d4f8c" text-anchor="middle">Bank 0</text>
+    <text x="753" y="240" font-size="12.5" font-weight="700" fill="#1d4f8c" text-anchor="middle">读 x</text>
+    <text x="753" y="258" font-size="11.5" fill="#526d88" text-anchor="middle">独立通道</text>
+
+    <rect x="828" y="192" width="122" height="78" rx="7" fill="#d9f1e9" stroke="#7ec5af" stroke-width="1.5"/>
+    <text x="889" y="218" font-size="13.5" font-weight="700" fill="#1d6b55" text-anchor="middle">Bank 1</text>
+    <text x="889" y="240" font-size="12.5" font-weight="700" fill="#1d6b55" text-anchor="middle">读 y（错位）</text>
+    <text x="889" y="258" font-size="11.5" fill="#526d88" text-anchor="middle">独立通道</text>
+
+    <rect x="964" y="192" width="122" height="78" rx="7" fill="#fff0d4" stroke="#e5b869" stroke-width="1.5"/>
+    <text x="1025" y="218" font-size="13.5" font-weight="700" fill="#8c5210" text-anchor="middle">Bank 2</text>
+    <text x="1025" y="240" font-size="12.5" font-weight="700" fill="#8c5210" text-anchor="middle">写 z（错位）</text>
+    <text x="1025" y="258" font-size="11.5" fill="#526d88" text-anchor="middle">独立通道</text>
+
+    <rect x="1100" y="192" width="118" height="78" rx="7" fill="#edf3f9"/>
+    <text x="1159" y="220" font-size="13" font-weight="700" fill="#1d6b55" text-anchor="middle">算量/字节</text>
+    <text x="1159" y="242" font-size="13" font-weight="700" fill="#1d6b55" text-anchor="middle">完全不变</text>
+    <text x="1159" y="260" font-size="11.5" fill="#526d88" text-anchor="middle">纯提 η_mem</text>
+
+    <!-- LOWER CARD: Strided Staging vs Continuous Span Load + Gather -->
+    <rect x="24" y="316" width="1232" height="202" rx="14" fill="#ffffff"/>
+    <text x="44" y="346" font-size="16.5" font-weight="700" fill="#203d5d">二、片外搬运（连续物理跨度加载 ＋ 片上 Gather）：以提交 03 / 06 的 4 个跨步元素为例</text>
+
+    <!-- Left: Strided per-element staging -->
+    <rect x="44" y="362" width="560" height="138" rx="10" fill="#fff5f5" stroke="#f0a6a6" stroke-width="1.5"/>
+    <rect x="60" y="374" width="260" height="26" rx="6" fill="#fde4e4"/>
+    <text x="190" y="392" font-size="13" font-weight="700" fill="#a32929" text-anchor="middle">改前：分散跨步取值（每元素预留 32B）</text>
+    <text x="330" y="392" font-size="12" fill="#526d88">A3 跨步加载按每元素预留 32B 暂存空间</text>
+
+    <!-- GM memory strip with sparse target elements -->
+    <text x="64" y="428" font-size="12.5" font-weight="700" fill="#203d5d">GM：</text>
+    <rect x="108" y="410" width="44" height="28" rx="4" fill="#a32929"/><text x="130" y="429" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">e0</text>
+    <rect x="156" y="410" width="60" height="28" rx="4" fill="#e6ecf2"/><text x="186" y="429" font-size="11" fill="#8299b0" text-anchor="middle">skip</text>
+    <rect x="220" y="410" width="44" height="28" rx="4" fill="#a32929"/><text x="242" y="429" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">e1</text>
+    <rect x="268" y="410" width="60" height="28" rx="4" fill="#e6ecf2"/><text x="298" y="429" font-size="11" fill="#8299b0" text-anchor="middle">skip</text>
+    <rect x="332" y="410" width="44" height="28" rx="4" fill="#a32929"/><text x="354" y="429" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">e2</text>
+    <rect x="380" y="410" width="60" height="28" rx="4" fill="#e6ecf2"/><text x="410" y="429" font-size="11" fill="#8299b0" text-anchor="middle">skip</text>
+    <rect x="444" y="410" width="44" height="28" rx="4" fill="#a32929"/><text x="466" y="429" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">e3</text>
+    <rect x="492" y="410" width="92" height="28" rx="4" fill="#e6ecf2"/><text x="538" y="429" font-size="11" fill="#8299b0" text-anchor="middle">...</text>
+
+    <!-- 4 separate red arrows down -->
+    <line x1="130" y1="438" x2="130" y2="458" stroke="#a32929" stroke-width="1.8" marker-end="url(#arr-r)"/>
+    <line x1="242" y1="438" x2="242" y2="458" stroke="#a32929" stroke-width="1.8" marker-end="url(#arr-r)"/>
+    <line x1="354" y1="438" x2="354" y2="458" stroke="#a32929" stroke-width="1.8" marker-end="url(#arr-r)"/>
+    <line x1="466" y1="438" x2="466" y2="458" stroke="#a32929" stroke-width="1.8" marker-end="url(#arr-r)"/>
+
+    <rect x="108" y="462" width="476" height="28" rx="6" fill="#fde4e4"/>
+    <text x="346" y="481" font-size="12.5" font-weight="700" fill="#a32929" text-anchor="middle">4 个跨步元素分散取值（暂存开销放大；实际事务数视编译而定）</text>
+
+    <!-- Center arrow -->
+    <line x1="612" y1="431" x2="660" y2="431" stroke="#1d6b55" stroke-width="2.6" marker-end="url(#arr-g)"/>
+    <text x="638" y="418" font-size="12" font-weight="700" fill="#1d6b55" text-anchor="middle">连续读</text>
+
+    <!-- Right: Continuous Span Load + UB Gather -->
+    <rect x="672" y="362" width="564" height="138" rx="10" fill="#f2fbf7" stroke="#9fd6c3" stroke-width="1.5"/>
+    <rect x="688" y="374" width="246" height="26" rx="6" fill="#d9f1e9"/>
+    <text x="811" y="392" font-size="13.5" font-weight="700" fill="#1d6b55" text-anchor="middle">改后：连续加载物理跨度 ＋ UB Gather</text>
+    <text x="944" y="392" font-size="12" fill="#1d6b55">当物理 span &lt; BLOCK×32B 时触发</text>
+
+    <rect x="692" y="410" width="232" height="44" rx="7" fill="#dceaff" stroke="#8fb8ec" stroke-width="1.5"/>
+    <text x="808" y="429" font-size="13" font-weight="700" fill="#1d4f8c" text-anchor="middle">连续加载物理跨度 tl.load(span)</text>
+    <text x="808" y="447" font-size="11.5" fill="#526d88" text-anchor="middle">整段物理跨度连续载入片上 UB</text>
+
+    <line x1="928" y1="432" x2="950" y2="432" stroke="#1d6b55" stroke-width="2.2" marker-end="url(#arr-g)"/>
+
+    <rect x="956" y="410" width="260" height="44" rx="7" fill="#d9f1e9" stroke="#7ec5af" stroke-width="1.5"/>
+    <text x="1086" y="429" font-size="13" font-weight="700" fill="#1d6b55" text-anchor="middle">片上 UB 内 tl.gather 取出 e0..e3</text>
+    <text x="1086" y="447" font-size="11.5" fill="#1d6b55" text-anchor="middle">在 UB 完成筛选，转置重建 mask 避 RMW</text>
+
+    <text x="692" y="481" font-size="12" fill="#203d5d">说明：实际 DMA 事务数依编译结果与地址对齐而定；转置核须按双轴 32B 对齐核算 UB 占用。</text>
+  </g>
+</svg>
